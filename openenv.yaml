@@ -1,0 +1,14 @@
+name: email-triage-env
+description: Real-world email classification and response environment
+
+entrypoint: my_env.env:EmailEnv
+
+tasks:
+  - name: easy
+    grader: my_env.graders:grade_easy
+
+  - name: medium
+    grader: my_env.graders:grade_medium
+
+  - name: hard
+    grader: my_env.graders:grade_hard
