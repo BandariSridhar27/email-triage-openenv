@@ -6,8 +6,11 @@ from my_env.models import Action
 def process_email(email_text):
     env = EmailEnv()
 
-    # Inject user input into environment
-    env.current_email = email_text
+    # Properly initialize environment
+    obs = env.reset()
+
+    # Inject user email into observation/state
+    obs.email_text = email_text
 
     text = email_text.lower()
 
@@ -18,6 +21,7 @@ def process_email(email_text):
     else:
         action = Action("important", "medium", "Reply to this email")
 
+    #Pass action to environment
     result = env.step(action)
 
     return (
