@@ -5,7 +5,9 @@ from my_env.models import Action
 # Simple rule-based model (safe fallback)
 def process_email(email_text):
     env = EmailEnv()
-    obs = env.reset()
+
+    # Inject user input into environment
+    env.current_email = email_text
 
     text = email_text.lower()
 
