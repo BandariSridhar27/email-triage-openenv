@@ -1,7 +1,10 @@
 import asyncio
+import time
+import os
 from my_env.env import EmailEnv
 from my_env.models import Action
 
+# ---------------- LOGGING ----------------
 def log_start(task, env, model):
     print(f"[START] task={task} env={env} model={model}")
 
@@ -12,52 +15,68 @@ def log_end(success, steps, rewards):
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
     print(f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}")
 
-from openai import OpenAI
-import os
+# ---------------- LLM SETUP ----------------
+HF_TOKEN = os.getenv("HF_TOKEN")
 
-client = OpenAI(
-    base_url="https://router.huggingface.co/v1",
-    api_key=os.getenv("HF_TOKEN")
-)
-
-def get_action(email_text):
-    prompt = f"""
-    You are an email assistant.
-
-    Email:
-    {email_text}
-
-    Return:
-    classification (spam or important)
-    priority (low, medium, high)
-    response (short reply)
-
-    Format:
-    classification,priority,response
-    """
-
-    response = client.chat.completions.create(
-        model="Qwen/Qwen2.5-72B-Instruct",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=100
+if HF_TOKEN:
+    from openai import OpenAI
+    client = OpenAI(
+        base_url="https://router.huggingface.co/v1",
+        api_key=HF_TOKEN
     )
+else:
+    client = None
 
-    text = response.choices[0].message.content.strip()
+# ---------------- ACTION LOGIC ----------------
+def get_action(email_text):
+    text = email_text.lower()
 
+    # 🔹 Rule-based fallback (VERY IMPORTANT)
+    if not client:
+        if any(word in text for word in ["free", "win", "offer", "lottery"]):
+            return Action("spam", "low", "Ignore this spam email")
+        elif "urgent" in text or "asap" in text:
+            return Action("important", "high", "Reply immediately")
+        else:
+            return Action("important", "medium", "Reply to this email")
+
+    # 🔹 LLM-based logic
     try:
+        prompt = f"""
+        You are an email assistant.
+
+        Email:
+        {email_text}
+
+        Return:
+        classification (spam or important),
+        priority (low, medium, high),
+        response
+
+        Format:
+        classification,priority,response
+        """
+
+        response = client.chat.completions.create(
+            model="Qwen/Qwen2.5-72B-Instruct",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=100
+        )
+
+        text = response.choices[0].message.content.strip()
         cls, pr, resp = text.split(",", 2)
-    except:
-        cls, pr, resp = "important", "medium", "Reply to this email"
 
-    return Action(
-        classification=cls.strip(),
-        priority=pr.strip(),
-        response=resp.strip()
-    ) 
+        return Action(cls.strip(), pr.strip(), resp.strip())
 
+    except Exception as e:
+        print("LLM error:", e)
+
+        # 🔹 fallback if API fails
+        return Action("important", "medium", "Reply to this email")
+
+# ---------------- MAIN LOOP ----------------
 async def main():
     env = EmailEnv()
-
     obs = env.reset()
     rewards = []
 
@@ -65,11 +84,9 @@ async def main():
 
     for step in range(1, 4):
         action = get_action(obs.email_text)
-
         result = env.step(action)
 
         rewards.append(result.reward)
-
         log_step(step, str(action), result.reward, result.done)
 
         if result.done:
@@ -78,5 +95,15 @@ async def main():
     success = sum(rewards) > 0.5
     log_end(success, step, rewards)
 
+# ---------------- ENTRY POINT ----------------
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        print("Runtime error:", e)
+
+    # 🔥 KEEP CONTAINER ALIVE (FINAL FIX)
+    print("Container running...")
+
+    while True:
+        time.sleep(60)
