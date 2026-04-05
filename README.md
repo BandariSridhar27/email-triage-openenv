@@ -1,42 +1,12 @@
----
-title: Email Triage Openenv
-emoji: ⚡
-colorFrom: gray
-colorTo: blue
-sdk: docker
-pinned: false
-license: mit
-short_description: AI-powered email classification and response environment
----
-
 # Email Triage OpenEnv
 
-## Description
-This environment simulates a real-world email classification and response system using OpenEnv.
+AI-powered Email Triage system built using OpenEnv with reward-based evaluation, multi-step tasks, and deployed via Docker on Hugging Face Spaces with an interactive Gradio UI.
 
-## Tasks
-- Easy: classify spam vs important
-- Medium: classify + assign priority
-- Hard: generate appropriate response
+## Features
+- Email classification (spam / important)
+- Priority detection
+- AI-generated responses
+- Reward-based evaluation
 
-## Action Space
-- classification: spam / important
-- priority: low / medium / high
-- response: text
-
-## Observation Space
-- email_text
-- step_count
-- history
-
-## Reward Logic
-- Correct classification → reward
-- Correct priority → reward
-- Meaningful response → reward
-- Wrong classification → penalty
-- Rewards normalized between 0 and 1
-
-## Run Locally
-
-```bash
-python inference.py
+## 🌐 Live Demo
+https://huggingface.co/spaces/sridhar-ai/email-triage-openenv
